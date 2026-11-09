@@ -314,6 +314,14 @@ void Settings::load() {
                 }
             }
 
+#ifdef PLATFORM_SWITCH
+            // Artemis Switch 1.0.1: clamp saved values to Switch limits
+            // (1080p, 60 fps, 100 Mbps).
+            if (m_resolution > 1080) m_resolution = 1080;
+            if (m_fps > 60) m_fps = 60;
+            if (m_bitrate > 100000) m_bitrate = 100000;
+#endif
+
             // Artemis Switch options
             if (json_t* v = json_object_get(settings, "frame_pacing")) {
                 if (json_typeof(v) == JSON_INTEGER) {

@@ -87,12 +87,11 @@ SettingsTab::SettingsTab() {
     // Inflate the tab from the XML file
     this->inflateFromXMLRes("xml/tabs/settings.xml");
 
-    // Artemis Switch: extended resolution list (900p, 1440p, 4K added).
-    // 1440p/4K are supersampled down to the 1080p dock output.
+    // Artemis Switch: resolution list capped at 1080p (Switch max output); 900p added.
     static const std::vector<int> resolutionValues = {
         -1, 360, 480, 540, 720,
 #if !defined(__PSV__)
-        900, 1080, 1440, 2160,
+        900, 1080,
 #else
         1080,
 #endif
@@ -100,7 +99,6 @@ SettingsTab::SettingsTab() {
     std::vector<std::string> resolutions;
     for (int v : resolutionValues) {
         if (v == -1) resolutions.push_back("settings/resolution_native"_i18n);
-        else if (v == 2160) resolutions.push_back("2160p (4K)");
         else resolutions.push_back(std::to_string(v) + "p");
     }
     resolution->setText("settings/resolution"_i18n);
@@ -228,12 +226,11 @@ SettingsTab::SettingsTab() {
         updateNativeResolutionScaleVisibility();
     });
 
-    // Artemis Switch: extended frame-rate list. Rates above 60 still lower
-    // latency on a 60 Hz panel because the newest frame is always shown.
+    // Artemis Switch: frame rates capped at 60 (Switch panel/dock max); 45/50 added.
 #if defined(__PSV__)
     static const std::vector<int> fpsValues = {24, 30, 40, 50, 60};
 #else
-    static const std::vector<int> fpsValues = {30, 40, 45, 50, 60, 72, 90, 120};
+    static const std::vector<int> fpsValues = {30, 40, 45, 50, 60};
 #endif
     std::vector<std::string> fpss;
     for (int v : fpsValues) fpss.push_back(std::to_string(v));
@@ -315,8 +312,8 @@ SettingsTab::SettingsTab() {
 #if defined(__PSV__)
     const float mbpsMaxLimit = 20000;
 #elif defined(PLATFORM_SWITCH)
-    // Artemis Switch: custom bitrate up to 150 Mbps (stock: 100 Mbps)
-    const float mbpsMaxLimit = 150000;
+    // Artemis Switch: 100 Mbps max (stock), plenty for 1080p60
+    const float mbpsMaxLimit = 100000;
 #else
     const float mbpsMaxLimit = 150000;
 #endif
