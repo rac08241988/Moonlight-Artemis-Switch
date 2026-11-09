@@ -23,6 +23,8 @@
 #include "xml.h"
 #include <Limelight.h>
 #include <stdbool.h>
+#include <string>
+#include <vector>
 
 #define MIN_SUPPORTED_GFE_VERSION 3
 #define MAX_SUPPORTED_GFE_VERSION 7
@@ -42,6 +44,8 @@ typedef struct _SERVER_DATA {
     SERVER_INFORMATION serverInfo;
     unsigned short httpPort;
     unsigned short httpsPort;
+    // Artemis Switch: Apollo <ServerCommand> entries from /serverinfo
+    std::vector<std::string> serverCommands;
     bool isSunshine();
 } SERVER_DATA, *PSERVER_DATA;
 

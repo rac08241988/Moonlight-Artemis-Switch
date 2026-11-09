@@ -22,6 +22,7 @@ class MoonlightSession {
     void start(ServerCallback<bool> callback, bool is_sunshine);
     void stop(int terminate_app);
     void set_address(const std::string& address) { m_address = address; }
+    [[nodiscard]] const std::string& address() const { return m_address; }
 
     void restart();
 

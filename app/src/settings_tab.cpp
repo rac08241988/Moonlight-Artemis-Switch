@@ -15,6 +15,7 @@
 #include "button_selecting_dialog.hpp"
 #include "mapping_layout_editor.hpp"
 #include "UpscalingSupport.hpp"
+#include <algorithm>
 #include <cmath>
 #include <iomanip>
 #include <sstream>
@@ -86,25 +87,29 @@ SettingsTab::SettingsTab() {
     // Inflate the tab from the XML file
     this->inflateFromXMLRes("xml/tabs/settings.xml");
 
-    std::vector<std::string> resolutions = {
-        "settings/resolution_native"_i18n, "360p", "480p", "540p", "720p", "1080p",
+    // Artemis Switch: extended resolution list (900p, 1440p, 4K added).
+    // 1440p/4K are supersampled down to the 1080p dock output.
+    static const std::vector<int> resolutionValues = {
+        -1, 360, 480, 540, 720,
 #if !defined(__PSV__)
-        "1440p",
+        900, 1080, 1440, 2160,
+#else
+        1080,
 #endif
     };
+    std::vector<std::string> resolutions;
+    for (int v : resolutionValues) {
+        if (v == -1) resolutions.push_back("settings/resolution_native"_i18n);
+        else if (v == 2160) resolutions.push_back("2160p (4K)");
+        else resolutions.push_back(std::to_string(v) + "p");
+    }
     resolution->setText("settings/resolution"_i18n);
     resolution->setData(resolutions);
-    switch (Settings::instance().resolution()) {
-        GET_SETTINGS(resolution, -1, 0);
-        GET_SETTINGS(resolution, 360, 1);
-        GET_SETTINGS(resolution, 480, 2);
-        GET_SETTINGS(resolution, 540, 3);
-        GET_SETTINGS(resolution, 720, 4);
-        GET_SETTINGS(resolution, 1080, 5);
-#if !defined(__PSV__)
-        GET_SETTINGS(resolution, 1440, 6);
-#endif
-        DEFAULT;
+    {
+        auto rit = std::find(resolutionValues.begin(), resolutionValues.end(),
+                             Settings::instance().resolution());
+        if (rit != resolutionValues.end())
+            resolution->setSelection((int)(rit - resolutionValues.begin()));
     }
 
     std::vector<std::string> nativeResolutionScales = {
@@ -218,70 +223,31 @@ SettingsTab::SettingsTab() {
     updateNativeResolutionScaleVisibility();
 
     resolution->getEvent()->subscribe([this, updateNativeResolutionScaleVisibility](int selected) {
-        switch (selected) {
-            SET_SETTING(0, set_resolution(-1));
-            SET_SETTING(1, set_resolution(360));
-            SET_SETTING(2, set_resolution(480));
-            SET_SETTING(3, set_resolution(540));
-            SET_SETTING(4, set_resolution(720));
-            SET_SETTING(5, set_resolution(1080));
-#if !defined(__PSV__)
-            SET_SETTING(6, set_resolution(1440));
-#endif
-            DEFAULT;
-        }
+        if (selected >= 0 && selected < (int)resolutionValues.size())
+            Settings::instance().set_resolution(resolutionValues[selected]);
         updateNativeResolutionScaleVisibility();
     });
 
+    // Artemis Switch: extended frame-rate list. Rates above 60 still lower
+    // latency on a 60 Hz panel because the newest frame is always shown.
 #if defined(__PSV__)
-    std::vector<std::string> fpss = {
-        "24",
-        "30",
-        "40",
-        "50",
-        "60",
-    };
+    static const std::vector<int> fpsValues = {24, 30, 40, 50, 60};
 #else
-    std::vector<std::string> fpss = {
-        "30",
-        "40",
-        "60",
-        "120",
-    };
+    static const std::vector<int> fpsValues = {30, 40, 45, 50, 60, 72, 90, 120};
 #endif
+    std::vector<std::string> fpss;
+    for (int v : fpsValues) fpss.push_back(std::to_string(v));
     fps->setText("settings/fps"_i18n);
     fps->setData(fpss);
-    switch (Settings::instance().fps()) {
-#if defined(__PSV__)
-        GET_SETTINGS(fps, 24, 0);
-        GET_SETTINGS(fps, 30, 1);
-        GET_SETTINGS(fps, 40, 2);
-        GET_SETTINGS(fps, 50, 3);
-        GET_SETTINGS(fps, 60, 4);
-#else
-        GET_SETTINGS(fps, 30, 0);
-        GET_SETTINGS(fps, 40, 1);
-        GET_SETTINGS(fps, 60, 2);
-        GET_SETTINGS(fps, 120, 3);
-#endif
-        DEFAULT;
+    {
+        auto fit = std::find(fpsValues.begin(), fpsValues.end(),
+                             Settings::instance().fps());
+        if (fit != fpsValues.end())
+            fps->setSelection((int)(fit - fpsValues.begin()));
     }
     fps->getEvent()->subscribe([](int selected) {
-        switch (selected) {
-#if defined(__PSV__)
-            SET_SETTING(0, set_fps(24));
-            SET_SETTING(1, set_fps(30));
-            SET_SETTING(2, set_fps(40));
-            SET_SETTING(3, set_fps(50));
-            SET_SETTING(4, set_fps(60));
-#else
-            SET_SETTING(0, set_fps(30));
-            SET_SETTING(1, set_fps(40));
-            SET_SETTING(2, set_fps(60));
-            SET_SETTING(3, set_fps(120));
-#endif
-            DEFAULT;
-        }
+        if (selected >= 0 && selected < (int)fpsValues.size())
+            Settings::instance().set_fps(fpsValues[selected]);
     });
 
     std::vector<std::string> decoders = {"settings/zero_threads"_i18n, "2", "3",
@@ -349,7 +315,8 @@ SettingsTab::SettingsTab() {
 #if defined(__PSV__)
     const float mbpsMaxLimit = 20000;
 #elif defined(PLATFORM_SWITCH)
-    const float mbpsMaxLimit = 100000;
+    // Artemis Switch: custom bitrate up to 150 Mbps (stock: 100 Mbps)
+    const float mbpsMaxLimit = 150000;
 #else
     const float mbpsMaxLimit = 150000;
 #endif
@@ -739,6 +706,43 @@ SettingsTab::SettingsTab() {
         Settings::instance().set_mouse_speed_multiplier(value * 100);
     });
     mouseSpeedSlider->setProgress(mouseProgress);
+
+#ifdef PLATFORM_SWITCH
+    // Artemis Switch: drop options that do nothing on Switch.
+    //  - Decoder threads: only used by software decoding; Switch always uses
+    //    the NVDEC (nvtegra) hardware decoder.
+    //  - Hardware decoding toggle: forced on and greyed out on Switch.
+    //  - Audio backend: Audren is the only backend.
+    decoder->removeFromSuperView(true);
+    hwDecoding->removeFromSuperView(true);
+    audioBackend->removeFromSuperView(true);
+#endif
+
+    // Artemis Switch: latency options
+    framePacing->init("Frame pacing",
+                      {"Lowest latency", "Balanced", "Smoothest"},
+                      (int)Settings::instance().frame_pacing(),
+                      [](int value) { Settings::instance().set_frame_pacing((FramePacing)value); });
+    vsyncCell->init("V-Sync while streaming", Settings::instance().vsync(),
+                    [](bool value) { Settings::instance().set_vsync(value); });
+    lowLatencyAudio->init("Low latency audio", Settings::instance().low_latency_audio(),
+                          [](bool value) { Settings::instance().set_low_latency_audio(value); });
+
+    // Artemis Switch: Apollo host extras
+    virtualDisplay->init("Use virtual display (Apollo)", Settings::instance().virtual_display(),
+                         [](bool value) { Settings::instance().set_virtual_display(value); });
+    {
+        static const std::vector<int> scaleValues = {50, 75, 100, 125, 150, 175, 200, 250, 300};
+        std::vector<std::string> scaleNames;
+        int selectedScale = 2;
+        for (size_t i = 0; i < scaleValues.size(); i++) {
+            scaleNames.push_back(std::to_string(scaleValues[i]) + "%");
+            if (scaleValues[i] == Settings::instance().resolution_scale_factor())
+                selectedScale = (int)i;
+        }
+        scaleFactor->init("Host display scale (Apollo)", scaleNames, selectedScale,
+                          [](int value) { Settings::instance().set_resolution_scale_factor(scaleValues[value]); });
+    }
 
     writeLog->init("settings/debugging_view"_i18n,
                    Settings::instance().write_log(), [](bool value) {

@@ -28,6 +28,18 @@
                 
             <brls:DetailCell
                 id="terminate"/>
+
+            <brls:Header
+                id="server_commands_header"
+                title="Server commands (Apollo)"
+                paddingTop="60"/>
+
+            <brls:Box
+                id="server_commands_box"
+                width="auto"
+                height="auto"
+                axis="column"
+                alignItems="stretch"/>
         
         </brls:Box>
         

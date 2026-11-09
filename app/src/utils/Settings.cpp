@@ -314,6 +314,31 @@ void Settings::load() {
                 }
             }
 
+            // Artemis Switch options
+            if (json_t* v = json_object_get(settings, "frame_pacing")) {
+                if (json_typeof(v) == JSON_INTEGER) {
+                    int fp = (int)json_integer_value(v);
+                    if (fp < FRAME_PACING_LOWEST_LATENCY || fp > FRAME_PACING_SMOOTHEST)
+                        fp = FRAME_PACING_LOWEST_LATENCY;
+                    m_frame_pacing = (FramePacing)fp;
+                }
+            }
+            if (json_t* v = json_object_get(settings, "vsync")) {
+                m_vsync = json_typeof(v) == JSON_TRUE;
+            }
+            if (json_t* v = json_object_get(settings, "low_latency_audio")) {
+                m_low_latency_audio = json_typeof(v) == JSON_TRUE;
+            }
+            if (json_t* v = json_object_get(settings, "virtual_display")) {
+                m_virtual_display = json_typeof(v) == JSON_TRUE;
+            }
+            if (json_t* v = json_object_get(settings, "resolution_scale_factor")) {
+                if (json_typeof(v) == JSON_INTEGER) {
+                    int sf = (int)json_integer_value(v);
+                    m_resolution_scale_factor = (sf < 50 || sf > 300) ? 100 : sf;
+                }
+            }
+
             if (json_t* hw_decoding = json_object_get(settings, "use_hw_decoding")) {
                 m_use_hw_decoding = json_typeof(hw_decoding) == JSON_TRUE;
             }
@@ -539,6 +564,11 @@ void Settings::save() {
             json_object_set_new(settings, "bitrate", json_integer(m_bitrate));
             json_object_set_new(settings, "decoder_threads", json_integer(m_decoder_threads));
             json_object_set_new(settings, "frames_queue_size", json_integer(m_frames_queue_size));
+            json_object_set_new(settings, "frame_pacing", json_integer(m_frame_pacing));
+            json_object_set_new(settings, "vsync", m_vsync ? json_true() : json_false());
+            json_object_set_new(settings, "low_latency_audio", m_low_latency_audio ? json_true() : json_false());
+            json_object_set_new(settings, "virtual_display", m_virtual_display ? json_true() : json_false());
+            json_object_set_new(settings, "resolution_scale_factor", json_integer(m_resolution_scale_factor));
             json_object_set_new(settings, "enable_hdr", m_enable_hdr ? json_true() : json_false());
             json_object_set_new(settings, "enable_upscaling", upscaling() ? json_true() : json_false());
             json_object_set_new(settings, "upscaling_mode", json_integer(upscaling_mode()));

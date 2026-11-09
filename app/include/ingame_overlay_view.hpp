@@ -37,6 +37,9 @@ class LogoutTab : public brls::Box {
 
     BRLS_BIND(brls::DetailCell, disconnect, "disconnect");
     BRLS_BIND(brls::DetailCell, terminateButton, "terminate");
+    // Artemis Switch: Apollo server commands
+    BRLS_BIND(brls::Header, serverCommandsHeader, "server_commands_header");
+    BRLS_BIND(brls::Box, serverCommandsBox, "server_commands_box");
 };
 
 // MARK: - Debug Tab

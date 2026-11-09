@@ -38,6 +38,13 @@ int AudrenAudioRenderer::init(int audio_configuration,
                               void* context, int ar_flags) {
     m_channel_count = opus_config->channelCount;
     m_sample_rate = opus_config->sampleRate;
+    // Artemis Switch low-latency audio: 10 ms wavebufs (2 Opus packets) and
+    // cap the hardware queue at ~40 ms instead of 500 ms, dropping late
+    // packets instead of letting audio drift behind video.
+    m_low_latency = Settings::instance().low_latency_audio();
+    m_latency = m_low_latency ? 4 : 5;
+    m_max_queued_frames = m_low_latency ? (size_t)(m_sample_rate * 40 / 1000)
+                                        : (size_t)(m_sample_rate / 2);
     m_buffer_size = m_latency * m_samples_per_frame * sizeof(s16);
     m_samples = m_buffer_size / m_channel_count / sizeof(s16);
     m_current_size = 0;
@@ -171,7 +178,9 @@ void AudrenAudioRenderer::decode_and_play_sample(char* data, int length) {
 
 int AudrenAudioRenderer::capabilities() {
 #if defined(PLATFORM_SWITCH)
-    return 0;
+    // Artemis Switch: in low-latency mode write_audio() never blocks, so
+    // decode directly on the receive thread and skip common-c's audio queue.
+    return Settings::instance().low_latency_audio() ? CAPABILITY_DIRECT_SUBMIT : 0;
 #else
     return CAPABILITY_DIRECT_SUBMIT;
 #endif
@@ -251,8 +260,8 @@ void AudrenAudioRenderer::write_audio(const void* buf, size_t size) {
     size_t queued_samples = m_total_queued_samples -
         audrvVoiceGetPlayedSampleCount(&m_driver, 0);
 
-    // If we have over 0.5 desync, drop samples
-    if (queued_samples > m_sample_rate / 2)
+    // Drop samples if audio is lagging (0.5 s stock, ~40 ms low-latency)
+    if (queued_samples > m_max_queued_frames)
         return;
 
     size_t written = 0;
@@ -260,6 +269,11 @@ void AudrenAudioRenderer::write_audio(const void* buf, size_t size) {
         written += append_audio(static_cast<const char*>(buf) + written, size - written);
 
         if (written != size) {
+            if (m_low_latency) {
+                // All wavebufs busy means we're already ~40-50 ms ahead of
+                // playback; drop the rest rather than blocking the stream.
+                break;
+            }
             mutexLock(&m_update_lock);
             audrvUpdate(&m_driver);
             mutexUnlock(&m_update_lock);

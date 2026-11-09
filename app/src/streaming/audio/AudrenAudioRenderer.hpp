@@ -44,7 +44,11 @@ class AudrenAudioRenderer : public IAudioRenderer {
     ssize_t m_current_size = 0;
 
     const int m_samples_per_frame = AUDREN_SAMPLES_PER_FRAME_48KHZ;
-    const int m_latency = 5;
+    // Artemis Switch: wavebuf size in 240-sample units (5 = stock, 4 = low latency)
+    int m_latency = 5;
+    // Max queued audio before incoming packets are dropped (frames)
+    size_t m_max_queued_frames = 0;
+    bool m_low_latency = false;
 };
 
 #endif // __SWITCH__

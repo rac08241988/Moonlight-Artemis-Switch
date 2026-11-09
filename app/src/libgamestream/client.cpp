@@ -63,6 +63,34 @@ bool _SERVER_DATA::isSunshine() {
     return AppVersionQuad[3] < 0;
 }
 
+// Artemis Switch: collect every <ServerCommand>..</ServerCommand> (Apollo).
+static std::vector<std::string> parse_server_commands(const Data& data) {
+    std::vector<std::string> out;
+    std::string xml((const char*)data.bytes(), data.size());
+    const std::string open_tag = "<ServerCommand>";
+    const std::string close_tag = "</ServerCommand>";
+    size_t pos = 0;
+    while ((pos = xml.find(open_tag, pos)) != std::string::npos) {
+        pos += open_tag.size();
+        size_t end = xml.find(close_tag, pos);
+        if (end == std::string::npos)
+            break;
+        std::string v = xml.substr(pos, end - pos);
+        const std::pair<const char*, const char*> ents[] = {
+            {"&lt;", "<"}, {"&gt;", ">"}, {"&quot;", "\""}, {"&apos;", "'"}, {"&amp;", "&"}};
+        for (auto& e : ents) {
+            size_t p2 = 0;
+            while ((p2 = v.find(e.first, p2)) != std::string::npos) {
+                v.replace(p2, strlen(e.first), e.second);
+                p2 += strlen(e.second);
+            }
+        }
+        out.push_back(v);
+        pos = end + close_tag.size();
+    }
+    return out;
+}
+
 static int load_serverinfo(PSERVER_DATA server, bool https) {
     int ret = GS_INVALID;
     char url[4096];
@@ -129,6 +157,8 @@ static int load_serverinfo(PSERVER_DATA server, bool https) {
 
     if (xml_search(data, "mac", &server->mac) != GS_OK)
         goto cleanup;
+
+    server->serverCommands = parse_server_commands(data);
 
     // These fields are present on all version of GFE that this client
     // supports
@@ -511,15 +541,25 @@ int gs_start_app(PSERVER_DATA server, STREAM_CONFIGURATION* config, int appId,
                        ? CHANNEL_MASK_STEREO
                        : CHANNEL_MASK_51_SURROUND;
         int fps = sops && config->fps > 60 ? 60 : config->fps;
+        std::string apollo_params;
+        if (server->isSunshine()) {
+            apollo_params = "&virtualDisplay=" +
+                std::to_string(Settings::instance().virtual_display() ? 1 : 0) +
+                "&scaleFactor=" +
+                std::to_string(Settings::instance().resolution_scale_factor());
+        }
         snprintf(url, sizeof(url),
                  "https://%s:%u/"
                  "launch?uniqueid=%s&appid=%d&mode=%dx%dx%d&additionalStates=1&"
                  "sops=%d&rikey=%s&rikeyid=%d&localAudioPlayMode=%d&"
-                 "surroundAudioInfo=%d&remoteControllersBitmap=%d&gcmap=%d%s",
+                 "surroundAudioInfo=%d&remoteControllersBitmap=%d&gcmap=%d"
+                 // Artemis Switch: Apollo extensions (ignored by Sunshine/GFE)
+                 "%s%s",
                  server->serverInfo.address, server->httpsPort, unique_id.c_str(), appId,
                  config->width, config->height, fps, sops, rand.hex().bytes(),
                  rikeyid, localaudio, (mask << 16) + channelCounnt,
-                 gamepad_mask, gamepad_mask, LiGetLaunchUrlQueryParameters());
+                 gamepad_mask, gamepad_mask,
+                 apollo_params.c_str(), LiGetLaunchUrlQueryParameters());
     } else {
         snprintf(url, sizeof(url),
                  "https://%s:%u/resume?uniqueid=%s&rikey=%s&rikeyid=%d%s",

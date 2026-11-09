@@ -128,6 +128,35 @@ AVFrame* AVFrameQueue::pop(bool* consumed) {
         }
     }
 
+    if (latestFrameOnly) {
+        // Artemis Switch lowest-latency path: no jitter reserve, no cadence
+        // estimation. Present the newest decoded frame on every draw and drop
+        // anything older, so a frame never waits behind another one.
+        if (queue.empty()) {
+            if (bufferFrame) {
+                fakeFrameUsedStat++;
+                emptyQueueStat++;
+            }
+            return bufferFrame;
+        }
+
+        recycleFrame(freeQueue, bufferFrame);
+        while (queue.size() > 1) {
+            AVFrame* stale = queue.front();
+            queue.pop();
+            recycleFrame(freeQueue, stale);
+            framesDroppedStat++;
+            pacingSkipStat++;
+        }
+        bufferFrame = queue.front();
+        queue.pop();
+        if (consumed) {
+            *consumed = true;
+        }
+        localClockPacedFrameStat++;
+        return bufferFrame;
+    }
+
     if (startupBuffering && queue.size() <= targetBufferedFrames) {
         if (bufferFrame) {
             fakeFrameUsedStat++;
@@ -254,6 +283,7 @@ void AVFrameQueue::configure(size_t queueLimit, int configuredStreamFps,
     targetBufferedFrames =
         configuredDepth > 1 ? std::min<size_t>(configuredDepth - 1, 2) : 0;
     transferOwnership = transferOwnershipEnabled;
+    latestFrameOnly = configuredDepth <= 1;
     streamFps = configuredStreamFps;
     adaptiveFrameInterval = std::chrono::nanoseconds::zero();
     drawClockStarted = false;

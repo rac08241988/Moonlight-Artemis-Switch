@@ -9,6 +9,7 @@
 #include "app_cell.hpp"
 #include "main_tabs_view.hpp"
 #include "forwarder_maker.hpp"
+#include "Settings.hpp"
 #include <cstdlib>
 #include <string>
 
@@ -54,6 +55,14 @@ void FavoriteTab::updateAppList() {
             gridView->addView(cell);
 
 #if defined(PLATFORM_SWITCH) || defined(PLATFORM_IOS)
+#ifdef PLATFORM_SWITCH
+            // Artemis Switch: forwarders point at an .nro; when running as an
+            // installed NSP there is no .nro to forward to, so hide the action.
+            const std::string lp = Settings::instance().launch_path();
+            const bool canMakeForwarder =
+                lp.size() > 4 && lp.compare(lp.size() - 4, 4, ".nro") == 0;
+            if (canMakeForwarder)
+#endif
             cell->registerAction(
                 "forwarder/make"_i18n, BUTTON_X,
                 [host, app](View* view) {

@@ -54,6 +54,8 @@ private:
     std::queue<AVFrame*> freeQueue;
     AVFrame* bufferFrame = nullptr;
     bool transferOwnership = false;
+    // Artemis Switch: 'Lowest latency' pacing - always show the newest frame
+    bool latestFrameOnly = false;
     size_t targetBufferedFrames = 0;
     int streamFps = 0;
     std::chrono::nanoseconds adaptiveFrameInterval{0};

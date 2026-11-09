@@ -56,6 +56,12 @@ class SettingsTab : public brls::Box {
     BRLS_BIND(brls::Header, mouseSpeedHeader, "mouse_speed_header");
     BRLS_BIND(brls::Slider, mouseSpeedSlider, "mouse_speed_slider");
     BRLS_BIND(brls::BooleanCell, writeLog, "writeLog");
+    // Artemis Switch
+    BRLS_BIND(brls::SelectorCell, framePacing, "frame_pacing");
+    BRLS_BIND(brls::BooleanCell, vsyncCell, "vsync");
+    BRLS_BIND(brls::BooleanCell, lowLatencyAudio, "low_latency_audio");
+    BRLS_BIND(brls::BooleanCell, virtualDisplay, "virtual_display");
+    BRLS_BIND(brls::SelectorCell, scaleFactor, "scale_factor");
 
     static brls::View* create();
 

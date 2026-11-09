@@ -56,6 +56,30 @@
                 grow="1"/>
 
             <brls:Header
+                title="Latency (Artemis)"
+                paddingTop="60"
+                lineTop="1px"/>
+
+            <brls:SelectorCell
+                id="frame_pacing"/>
+
+            <brls:BooleanCell
+                id="vsync"/>
+
+            <brls:BooleanCell
+                id="low_latency_audio"/>
+
+            <brls:Header
+                title="Apollo host (Artemis)"
+                paddingTop="60"/>
+
+            <brls:BooleanCell
+                id="virtual_display"/>
+
+            <brls:SelectorCell
+                id="scale_factor"/>
+
+            <brls:Header
                 id="image_adjustments_header"
                 title="@i18n/settings/image_adjustments"
                 paddingTop="60"

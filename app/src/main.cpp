@@ -94,6 +94,9 @@ int main(int argc, char* argv[]) {
     // Enable recording for Twitter memes
 #ifdef __SWITCH__
     appletInitializeGamePlayRecording();
+    // Artemis Switch: make sure capture-button video recording is active
+    // (NACP VideoCapture=Enabled is set at pack time).
+    appletSetGamePlayRecordingState(true);
     appletSetWirelessPriorityMode(AppletWirelessPriorityMode_OptimizedForWlan);
 
     // Keep the UI loop away from the hottest streaming worker core.
@@ -134,7 +137,13 @@ int main(int argc, char* argv[]) {
 
     brls::Application::createWindow("title"_i18n);
 
+#ifdef PLATFORM_SWITCH
+    // Artemis Switch keeps its own pairing identity/settings so it can live
+    // next to stock Moonlight-Switch and pair as a separate Apollo client.
+    auto home = Application::getPlatform()->getHomeDirectory("Artemis-Switch");
+#else
     auto home = Application::getPlatform()->getHomeDirectory("Moonlight-Switch");
+#endif
     Settings::instance().set_working_dir(home);
     Settings::instance().set_launch_path(argc > 0 ? argv[0] : "");
     brls::Logger::info("Working dir, {}", home);

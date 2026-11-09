@@ -10,6 +10,9 @@
 #endif
 
 #include "helper.hpp"
+#include "GameStreamClient.hpp"
+#include "MoonlightSession.hpp"
+#include <Limelight.h>
 #include "ingame_overlay_view.hpp"
 #include "streaming_input_overlay.hpp"
 #include "button_selecting_dialog.hpp"
@@ -108,6 +111,29 @@ LogoutTab::LogoutTab(StreamingView* streamView) : streamView(streamView) {
         this->dismiss([streamView] { streamView->terminate(true); });
         return true;
     });
+
+    // Artemis Switch: list Apollo <ServerCommand>s and run them on click.
+    std::vector<std::string> commands;
+    if (auto* session = MoonlightSession::activeSession()) {
+        commands = GameStreamClient::instance()
+                       .server_data(session->address())
+                       .serverCommands;
+    }
+    if (commands.empty()) {
+        serverCommandsHeader->setSubtitle("None (requires Apollo host)");
+    }
+    for (size_t i = 0; i < commands.size() && i < 256; i++) {
+        auto* cell = new brls::DetailCell();
+        cell->setText(commands[i]);
+        cell->setDetailText("Run");
+        const uint8_t cmdId = (uint8_t)i;
+        cell->registerClickAction([cell, cmdId](View* view) {
+            int err = LiSendExecServerCmd(cmdId);
+            cell->setDetailText(err == 0 ? "Sent" : "Failed");
+            return true;
+        });
+        serverCommandsBox->addView(cell);
+    }
 }
 
 // MARK: - Options Tab

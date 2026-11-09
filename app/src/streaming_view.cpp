@@ -67,6 +67,27 @@ void overrideButtonsIfNeeded(bool value) {
 #endif
 }
 
+// Artemis Switch: optional "VSync off" while the stream has focus. Swap
+// interval 0 lets nvnflinger take the newest buffer instead of blocking the
+// render loop on vblank; the loop is capped so it doesn't starve the decoder.
+static void applyStreamingPresentMode(bool streaming) {
+#ifdef PLATFORM_SWITCH
+    static bool applied = false;
+    if (streaming && !Settings::instance().vsync()) {
+        int cap = Settings::instance().fps() * 2;
+        if (cap < 120) cap = 120;
+        if (cap > 240) cap = 240;
+        Application::setSwapInterval(0);
+        Application::setLimitedFPS(cap);
+        applied = true;
+    } else if (applied) {
+        Application::setSwapInterval(1);
+        Application::setLimitedFPS(0);
+        applied = false;
+    }
+#endif
+}
+
 StreamingView::StreamingView(const Host& host, const AppInfo& app) : host(host), app(app) {
     Application::getPlatform()->disableScreenDimming(true);
 
@@ -258,6 +279,7 @@ void StreamingView::onFocusGained() {
     Application::getPlatform()->getInputManager()->setPointerLock(true);
 
     overrideButtonsIfNeeded(true);
+    applyStreamingPresentMode(true);
     setBottomBarStatus("1");
 
     scrollTouchRecognizer->forceReset();
@@ -278,6 +300,7 @@ void StreamingView::onFocusLost() {
     Application::getPlatform()->getInputManager()->setPointerLock(false);
 
     overrideButtonsIfNeeded(false);
+    applyStreamingPresentMode(false);
     setBottomBarStatus("2");
 
     if (bottombarDelayTask != -1)
@@ -590,6 +613,7 @@ StreamingView::~StreamingView() {
 #endif
     
     Application::getPlatform()->disableScreenDimming(false);
+    applyStreamingPresentMode(false);
     Application::getPlatform()
         ->getInputManager()
         ->getKeyboardKeyStateChanged()

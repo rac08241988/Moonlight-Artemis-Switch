@@ -22,6 +22,13 @@ enum AudioBackend : int {
 
 enum KeyboardType : int { COMPACT, FULLSIZED };
 
+// Artemis-style frame pacing presets (Artemis Switch)
+enum FramePacing : int {
+    FRAME_PACING_LOWEST_LATENCY = 0, // always present newest decoded frame
+    FRAME_PACING_BALANCED = 1,       // 1 frame jitter reserve
+    FRAME_PACING_SMOOTHEST = 2,      // 2 frame jitter reserve (stock Moonlight-Switch)
+};
+
 enum class ButtonOverrideType : int { NONE, SCREENSHOT, HOME };
 
 struct KeyMappingLayout {
@@ -239,7 +246,34 @@ class Settings : public Singleton<Settings> {
     [[nodiscard]] int decoder_threads() const { return m_decoder_threads; }
 
     void set_frames_queue_size(int frames_queue_size) { m_frames_queue_size = frames_queue_size; }
-    [[nodiscard]] int frames_queue_size() const { return m_frames_queue_size; }
+    [[nodiscard]] int frames_queue_size() const {
+#ifdef PLATFORM_SWITCH
+        // Artemis Switch: queue depth is driven by the Frame pacing preset.
+        switch (m_frame_pacing) {
+        case FRAME_PACING_LOWEST_LATENCY: return 1;
+        case FRAME_PACING_BALANCED: return 2;
+        default: return 3;
+        }
+#else
+        return m_frames_queue_size;
+#endif
+    }
+
+    // --- Artemis Switch: latency + Apollo options ---
+    void set_frame_pacing(FramePacing value) { m_frame_pacing = value; }
+    [[nodiscard]] FramePacing frame_pacing() const { return m_frame_pacing; }
+
+    void set_vsync(bool value) { m_vsync = value; }
+    [[nodiscard]] bool vsync() const { return m_vsync; }
+
+    void set_low_latency_audio(bool value) { m_low_latency_audio = value; }
+    [[nodiscard]] bool low_latency_audio() const { return m_low_latency_audio; }
+
+    void set_virtual_display(bool value) { m_virtual_display = value; }
+    [[nodiscard]] bool virtual_display() const { return m_virtual_display; }
+
+    void set_resolution_scale_factor(int value) { m_resolution_scale_factor = value; }
+    [[nodiscard]] int resolution_scale_factor() const { return m_resolution_scale_factor; }
 
     void set_sops(bool sops) { m_sops = sops; }
     [[nodiscard]] bool sops() const { return m_sops; }
@@ -356,6 +390,11 @@ class Settings : public Singleton<Settings> {
     bool m_click_by_tap = false;
     int m_decoder_threads = 4;
     int m_frames_queue_size = 3;
+    FramePacing m_frame_pacing = FRAME_PACING_LOWEST_LATENCY;
+    bool m_vsync = true;
+    bool m_low_latency_audio = true;
+    bool m_virtual_display = false;
+    int m_resolution_scale_factor = 100;
     bool m_sops = false;
     bool m_play_audio = false;
     bool m_write_log = false;
