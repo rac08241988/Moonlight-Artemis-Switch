@@ -1,6 +1,8 @@
 # Moonlight Artemis for Nintendo Switch
 
-Moonlight Artemis is a low-latency game streaming client for the Nintendo Switch (homebrew NSP).
+**Built for the lowest latency possible on the Nintendo Switch.**
+
+Moonlight Artemis is a game streaming client for the Nintendo Switch (homebrew NSP), tuned for the lowest possible input-to-screen latency.
 It streams games and your desktop from a PC running [Sunshine](https://github.com/LizardByte/Sunshine)
 or [Apollo](https://github.com/ClassicOldSong/Apollo).
 
@@ -10,7 +12,9 @@ It installs as its own app, "Moonlight Artemis" (app ID `0100A7E3A7E00000`), so 
 
 ## Features vs stock Moonlight-Switch
 
-By default, the video and audio path is the same as stock, which streams smoothly. All latency extras are opt-in.
+Moonlight Artemis is made for the lowest latency possible. It ships with stock-smooth defaults so it works well on every setup, and its Artemis latency options cut delay further:
+
+**For the lowest latency:** set *Frame pacing* to **Lowest latency**, turn **Low latency audio** on, and keep V-Sync on. If you see any stutter on your network, step back to *Balanced*.
 
 **Latency (Artemis)** (Settings tab)
 - **Frame pacing**: *Smoothest (stock, default)* (3-frame queue) / *Balanced* (2-frame queue) /
