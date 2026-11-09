@@ -95,7 +95,7 @@ int main(int argc, char* argv[]) {
 #ifdef __SWITCH__
     // Artemis Switch 1.0.2: only call this when running as an .nro under
     // hbloader (stock Moonlight-Switch behaviour). As an installed NSP the
-    // NACP (VideoCapture=Enable) makes the system handle recording itself;
+    // NACP has VideoCapture=Disable since 1.0.4 (Enable made am fatal);
     // calling InitializeGamePlayRecording / SetGamePlayRecordingState there
     // crashed "am" (fatal 2168-0007) on FW 22.5.0 / AMS 1.11.2.
     if (envHasNextLoad())

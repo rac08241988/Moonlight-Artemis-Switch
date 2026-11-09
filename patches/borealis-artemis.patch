@@ -1,0 +1,13 @@
+diff --git a/library/include/borealis/platforms/switch/switch_video.hpp b/library/include/borealis/platforms/switch/switch_video.hpp
+index 3a342b06..2cae8140 100644
+--- a/library/include/borealis/platforms/switch/switch_video.hpp
++++ b/library/include/borealis/platforms/switch/switch_video.hpp
+@@ -31,6 +31,8 @@ typedef Event _LibNXEvent; // "Event" alone clashes with brls::Event
+ namespace brls
+ {
+ 
++// Artemis Switch 1.0.5: back to stock triple buffering. Double buffering made
++// the render loop block on vblank and miss frames (periodic hitches).
+ static constexpr const unsigned FRAMEBUFFERS_COUNT = 3;
+ 
+ // deko3d video context

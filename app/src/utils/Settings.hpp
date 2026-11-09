@@ -252,7 +252,7 @@ class Settings : public Singleton<Settings> {
         switch (m_frame_pacing) {
         case FRAME_PACING_LOWEST_LATENCY: return 1;
         case FRAME_PACING_BALANCED: return 2;
-        default: return 3;
+        default: return m_frames_queue_size; // Smoothest = stock value (3)
         }
 #else
         return m_frames_queue_size;
@@ -390,9 +390,9 @@ class Settings : public Singleton<Settings> {
     bool m_click_by_tap = false;
     int m_decoder_threads = 4;
     int m_frames_queue_size = 3;
-    FramePacing m_frame_pacing = FRAME_PACING_LOWEST_LATENCY;
+    FramePacing m_frame_pacing = FRAME_PACING_SMOOTHEST; // 1.0.5: stock queue (3) by default
     bool m_vsync = true;
-    bool m_low_latency_audio = true;
+    bool m_low_latency_audio = false; // 1.0.5: opt-in (stock audio path by default)
     bool m_virtual_display = false;
     int m_resolution_scale_factor = 100;
     bool m_sops = false;

@@ -327,7 +327,7 @@ void Settings::load() {
                 if (json_typeof(v) == JSON_INTEGER) {
                     int fp = (int)json_integer_value(v);
                     if (fp < FRAME_PACING_LOWEST_LATENCY || fp > FRAME_PACING_SMOOTHEST)
-                        fp = FRAME_PACING_LOWEST_LATENCY;
+                        fp = FRAME_PACING_SMOOTHEST;
                     m_frame_pacing = (FramePacing)fp;
                 }
             }
@@ -336,6 +336,19 @@ void Settings::load() {
             }
             if (json_t* v = json_object_get(settings, "low_latency_audio")) {
                 m_low_latency_audio = json_typeof(v) == JSON_TRUE;
+            }
+            // Artemis Switch 1.0.5: one-time migration to the stock video path.
+            // Settings saved by 1.0.0-1.0.4 (no pacing_rev >= 106) get the
+            // stock-equivalent defaults once: Smoothest pacing (stock 3-frame
+            // queue), V-Sync on, low latency audio off. Later choices are kept.
+            {
+                json_t* rev = json_object_get(settings, "pacing_rev");
+                int r = (rev && json_typeof(rev) == JSON_INTEGER) ? (int)json_integer_value(rev) : 0;
+                if (r < 106) {
+                    m_frame_pacing = FRAME_PACING_SMOOTHEST;
+                    m_vsync = true;
+                    m_low_latency_audio = false;
+                }
             }
             if (json_t* v = json_object_get(settings, "virtual_display")) {
                 m_virtual_display = json_typeof(v) == JSON_TRUE;
@@ -573,6 +586,7 @@ void Settings::save() {
             json_object_set_new(settings, "decoder_threads", json_integer(m_decoder_threads));
             json_object_set_new(settings, "frames_queue_size", json_integer(m_frames_queue_size));
             json_object_set_new(settings, "frame_pacing", json_integer(m_frame_pacing));
+            json_object_set_new(settings, "pacing_rev", json_integer(106));
             json_object_set_new(settings, "vsync", m_vsync ? json_true() : json_false());
             json_object_set_new(settings, "low_latency_audio", m_low_latency_audio ? json_true() : json_false());
             json_object_set_new(settings, "virtual_display", m_virtual_display ? json_true() : json_false());

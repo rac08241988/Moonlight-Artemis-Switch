@@ -1,0 +1,51 @@
+diff --git a/src/ControlStream.c b/src/ControlStream.c
+index 2b5182e..1e42da0 100644
+--- a/src/ControlStream.c
++++ b/src/ControlStream.c
+@@ -2084,3 +2084,20 @@ bool LiGetHdrMetadata(PSS_HDR_METADATA metadata) {
+     *metadata = hdrMetadata;
+     return true;
+ }
++
++// Artemis Switch: Apollo protocol extension - ask the host to run one of the
++// <ServerCommand> entries advertised in /serverinfo (index cmdId).
++int LiSendExecServerCmd(uint8_t cmdId) {
++    uint8_t payload[4] = {cmdId, 0, 0, 0};
++
++    if (!IS_SUNSHINE() || peer == NULL) {
++        return -2;
++    }
++
++    return sendMessageAndForget(0x3000,
++                                sizeof(payload),
++                                payload,
++                                CTRL_CHANNEL_SERVERCTL,
++                                ENET_PACKET_FLAG_RELIABLE,
++                                false) ? 0 : -1;
++}
+diff --git a/src/Limelight-internal.h b/src/Limelight-internal.h
+index ce82e46..3a355fe 100644
+--- a/src/Limelight-internal.h
++++ b/src/Limelight-internal.h
+@@ -61,6 +61,7 @@ extern uint32_t EncryptionFeaturesEnabled;
+ #define CTRL_CHANNEL_PEN          0x04
+ #define CTRL_CHANNEL_TOUCH        0x05
+ #define CTRL_CHANNEL_UTF8         0x06
++#define CTRL_CHANNEL_SERVERCTL    0x08 // Apollo server commands (Artemis Switch)
+ #define CTRL_CHANNEL_GAMEPAD_BASE 0x10 // 0x10 to 0x1F by controller index
+ #define CTRL_CHANNEL_SENSOR_BASE  0x20 // 0x20 to 0x2F by controller index
+ #define CTRL_CHANNEL_COUNT        0x30
+diff --git a/src/Limelight.h b/src/Limelight.h
+index 6f01f11..eb83417 100644
+--- a/src/Limelight.h
++++ b/src/Limelight.h
+@@ -1012,6 +1012,9 @@ void LiRequestIdrFrame(void);
+ #define LI_FF_CONTROLLER_TOUCH_EVENTS 0x02 // LiSendControllerTouchEvent() supported
+ uint32_t LiGetHostFeatureFlags(void);
+ 
++// Artemis Switch: Apollo server command (index into serverinfo ServerCommand list)
++int LiSendExecServerCmd(uint8_t cmdId);
++
+ #ifdef __cplusplus
+ }
+ #endif

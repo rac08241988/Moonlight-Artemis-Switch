@@ -542,7 +542,11 @@ int gs_start_app(PSERVER_DATA server, STREAM_CONFIGURATION* config, int appId,
                        : CHANNEL_MASK_51_SURROUND;
         int fps = sops && config->fps > 60 ? 60 : config->fps;
         std::string apollo_params;
-        if (server->isSunshine()) {
+        // 1.0.5: only send Apollo extras when the user opted in, so the
+        // default launch request is byte-identical to stock.
+        if (server->isSunshine() &&
+            (Settings::instance().virtual_display() ||
+             Settings::instance().resolution_scale_factor() != 100)) {
             apollo_params = "&virtualDisplay=" +
                 std::to_string(Settings::instance().virtual_display() ? 1 : 0) +
                 "&scaleFactor=" +

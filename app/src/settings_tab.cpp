@@ -717,7 +717,7 @@ SettingsTab::SettingsTab() {
 
     // Artemis Switch: latency options
     framePacing->init("Frame pacing",
-                      {"Lowest latency", "Balanced", "Smoothest"},
+                      {"Lowest latency", "Balanced", "Smoothest (stock, default)"},
                       (int)Settings::instance().frame_pacing(),
                       [](int value) { Settings::instance().set_frame_pacing((FramePacing)value); });
     vsyncCell->init("V-Sync while streaming", Settings::instance().vsync(),

@@ -12,6 +12,8 @@
 namespace {
 
 constexpr size_t kBurstHeadroomFrames = 5;
+// Artemis Switch: draws with >=2 queued frames before Lowest latency trims
+constexpr size_t kLowLatencyBacklogDraws = 8;
 constexpr auto kArrivalRateWindow = std::chrono::milliseconds(250);
 constexpr auto kArrivalRateResetGap = std::chrono::milliseconds(500);
 constexpr double kArrivalRateSmoothing = 0.35;
@@ -129,10 +131,14 @@ AVFrame* AVFrameQueue::pop(bool* consumed) {
     }
 
     if (latestFrameOnly) {
-        // Artemis Switch lowest-latency path: no jitter reserve, no cadence
-        // estimation. Present the newest decoded frame on every draw and drop
-        // anything older, so a frame never waits behind another one.
+        // Artemis Switch 1.0.5 'Lowest latency': no jitter reserve, but show
+        // frames in order, one per vsync. 1.0.0-1.0.4 always jumped to the
+        // newest frame, so whenever network/decode jitter put two frames into
+        // one 16.7 ms vblank it dropped one and then had nothing for the next
+        // vblank -> visible freeze + skip at a matching 60 fps stream. Now the
+        // backlog is only trimmed when it persists (we are really behind).
         if (queue.empty()) {
+            backlogDraws = 0;
             if (bufferFrame) {
                 fakeFrameUsedStat++;
                 emptyQueueStat++;
@@ -140,13 +146,22 @@ AVFrame* AVFrameQueue::pop(bool* consumed) {
             return bufferFrame;
         }
 
+        if (queue.size() >= 2) {
+            backlogDraws++;
+        } else {
+            backlogDraws = 0;
+        }
+
         recycleFrame(freeQueue, bufferFrame);
-        while (queue.size() > 1) {
-            AVFrame* stale = queue.front();
-            queue.pop();
-            recycleFrame(freeQueue, stale);
-            framesDroppedStat++;
-            pacingSkipStat++;
+        if (backlogDraws >= kLowLatencyBacklogDraws || queue.size() > 3) {
+            while (queue.size() > 1) {
+                AVFrame* stale = queue.front();
+                queue.pop();
+                recycleFrame(freeQueue, stale);
+                framesDroppedStat++;
+                pacingSkipStat++;
+            }
+            backlogDraws = 0;
         }
         bufferFrame = queue.front();
         queue.pop();
@@ -284,6 +299,7 @@ void AVFrameQueue::configure(size_t queueLimit, int configuredStreamFps,
         configuredDepth > 1 ? std::min<size_t>(configuredDepth - 1, 2) : 0;
     transferOwnership = transferOwnershipEnabled;
     latestFrameOnly = configuredDepth <= 1;
+    backlogDraws = 0;
     streamFps = configuredStreamFps;
     adaptiveFrameInterval = std::chrono::nanoseconds::zero();
     drawClockStarted = false;
