@@ -93,10 +93,13 @@ void preferSwitchCore(int ordinal) {
 int main(int argc, char* argv[]) {
     // Enable recording for Twitter memes
 #ifdef __SWITCH__
-    appletInitializeGamePlayRecording();
-    // Artemis Switch: make sure capture-button video recording is active
-    // (NACP VideoCapture=Enabled is set at pack time).
-    appletSetGamePlayRecordingState(true);
+    // Artemis Switch 1.0.2: only call this when running as an .nro under
+    // hbloader (stock Moonlight-Switch behaviour). As an installed NSP the
+    // NACP (VideoCapture=Enable) makes the system handle recording itself;
+    // calling InitializeGamePlayRecording / SetGamePlayRecordingState there
+    // crashed "am" (fatal 2168-0007) on FW 22.5.0 / AMS 1.11.2.
+    if (envHasNextLoad())
+        appletInitializeGamePlayRecording();
     appletSetWirelessPriorityMode(AppletWirelessPriorityMode_OptimizedForWlan);
 
     // Keep the UI loop away from the hottest streaming worker core.
